@@ -1,5 +1,5 @@
-#custom_form input,
-#custom_form textarea{
+.cf_form input,
+.cf_form textarea{
     padding: 5px;
     margin: 10px 0;
     width: 100%;

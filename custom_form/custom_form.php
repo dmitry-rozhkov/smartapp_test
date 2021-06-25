@@ -6,13 +6,13 @@
  * Version:     1.0
  */
 
-define("CF_DEBUG", false);
+define("CF_DEBUG", true);
 
 add_shortcode( 'custom_form', 'cf_form_output' );
 
 add_action('wp_ajax_custom_form', 'cf_send_message');
 add_action('wp_ajax_nopriv_custom_form', 'cf_send_message');
-
+add_action('wp_enqueue_scripts', 'cf_add_js_variables');
 
 // OPTIONS
 add_action('admin_menu', 'cf_add_options_page');
@@ -35,8 +35,7 @@ function cf_options_page_output(){
 }
 
 function cf_options_init( ) {
-    register_setting( 'custom_form_opt', 'custom_form_options' );
-    add_settings_section( 'section_seo', 'SEO options', '', 'speednseo_page' );
+    register_setting( 'custom_form_opt', 'cf_options' );
     add_settings_section( 'custom_form_section', 'Custom Form Options', '', 'custom_form_opt' );
 
     add_settings_field(
@@ -66,36 +65,37 @@ function cf_options_init( ) {
 }
 
 function cf_subject_render( ) {
-    $options = get_option( 'custom_form_options' );
+    $options = get_option( 'cf_options' );
     ?>
-    <input type='text' name='custom_form_options[cf_subject]' value='<?php echo $options['cf_subject']; ?>'>
+    <input type='text' name='cf_options[cf_subject]' value='<?php echo $options['cf_subject']; ?>'>
     <?php
 }
 
 function cf_message_render( ) {
-    $options = get_option( 'custom_form_options' );
+    $options = get_option( 'cf_options' );
     ?>
-    <textarea name='custom_form_options[cf_message]'><?php echo $options['cf_message']; ?></textarea>
+    <textarea name='cf_options[cf_message]'><?php echo $options['cf_message']; ?></textarea>
     <?php
 }
 
 function cf_api_key_render( ) {
-    $options = get_option( 'custom_form_options' );
+    $options = get_option( 'cf_options' );
     ?>
-    <input type='text' name='custom_form_options[cf_api_key]' value='<?php echo $options['cf_api_key']; ?>'>
+    <input type='text' name='cf_options[cf_api_key]' value='<?php echo $options['cf_api_key']; ?>'>
     <?php
+}
+
+// FORM
+function cf_add_js_variables(){
+    wp_localize_script( 'jquery', 'cf_ajaxurl', site_url().'/wp-admin/admin-ajax.php' );
 }
 
 function cf_form_output($atts){
     wp_enqueue_style( 'custom_form_css', plugins_url('custom_form.css', __FILE__) );
     wp_enqueue_script('custom_form_js', plugins_url('custom_form.js', __FILE__), array('jquery') );
-
-    //$form = new Custom_Form();
     ?>
-    <script>
-        var cf_ajaxurl = "<?php echo site_url().'/wp-admin/admin-ajax.php'; ?>";
-    </script>
-    <form id="custom_form" action="/" method="post" data-ajax="">
+    <form class="cf_form" action="/" method="post" data-ajax="">
+        <?php wp_nonce_field("cf_act", "cf_nonce"); ?>
         <input name="first_name" type="text" placeholder="Your First Name" required="">
         <input name="last_name" type="text" placeholder="Your Last Name" required="">
         <input name="subject" type="text" placeholder="Subject" required="">
@@ -112,12 +112,14 @@ function cf_form_output($atts){
 function cf_send_message(){
 
     if (strpos($_SERVER['HTTP_REFERER'], get_site_url()) === false) return;
+    if(!isset($_POST['cf_nonce']) || !wp_verify_nonce( $_POST['cf_nonce'], 'cf_act')) return;
+
     $cf_out = [];
 
     $first_name = $_POST['first_name'];
     $last_name = $_POST['last_name'];
 
-    $options = get_option( 'custom_form_options' );
+    $options = get_option( 'cf_options' );
     $subject = $options['cf_subject'];
     $message = $options['cf_message'];
 
